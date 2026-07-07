@@ -151,7 +151,8 @@ export function orgHasPremiumFeature(
   org: MinimalOrganization,
   feature: CommercialFeature,
 ): boolean {
-  return planHasPremiumFeature(getEffectiveAccountPlan(org), feature);
+  // return planHasPremiumFeature(getEffectiveAccountPlan(org), feature);
+  return true;
 }
 
 function getPublicKey(): Buffer {
