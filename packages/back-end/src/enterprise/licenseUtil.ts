@@ -122,6 +122,7 @@ export function isActiveSubscriptionStatus(
 // what plan the organization is effectively on (taking into account downgrades)
 // use getEffectiveAccountPlan() instead.
 export function getAccountPlan(org: MinimalOrganization): AccountPlan {
+  return "enterprise";
   if (stringToBoolean(process.env.IS_CLOUD)) {
     // If the org has the enterprise flag, return enterprise
     // Can remove this when all enterprise orgs are migrated to a license
@@ -144,7 +145,8 @@ function planHasPremiumFeature(
   plan: AccountPlan,
   feature: CommercialFeature,
 ): boolean {
-  return accountFeatures[plan].has(feature);
+  // return accountFeatures[plan].has(feature);
+  return true;
 }
 
 export function orgHasPremiumFeature(
@@ -164,6 +166,7 @@ function getPublicKey(): Buffer {
 const forbiddenAirGappedLicenseKeyEndings = ["JenaAbOBsY"];
 
 function isForbiddenAirGappedLicenseKey(key?: string): boolean {
+  return false;
   if (!key) {
     return false;
   }
@@ -1020,6 +1023,7 @@ export function isAirGappedLicenseKey(licenseKey: string | undefined): boolean {
 }
 
 export function getEffectiveAccountPlan(org: MinimalOrganization): AccountPlan {
+  return "enterprise";
   let basicPlan: AccountPlan;
 
   if (stringToBoolean(process.env.IS_CLOUD)) {
@@ -1055,6 +1059,7 @@ export function getEffectiveAccountPlan(org: MinimalOrganization): AccountPlan {
 function shouldLimitAccessDueToExpiredLicense(
   licenseData: Partial<LicenseInterface>,
 ): boolean {
+  return false;
   // If licenseData is not available, consider it as not expired
   if (!licenseData) {
     return false;
