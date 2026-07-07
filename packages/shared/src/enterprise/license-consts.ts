@@ -276,11 +276,11 @@ const commercialFeaturesEnterprise: CommercialFeature[] = [
 ];
 
 export const accountFeatures: CommercialFeaturesMap = {
-  oss: new Set<CommercialFeature>([]),
-  starter: new Set<CommercialFeature>([]),
-  pro: new Set<CommercialFeature>(commercialFeaturesPro),
-  pro_sso: new Set<CommercialFeature>(commercialFeaturesProSso),
-  enterprise: new Set<CommercialFeature>(commercialFeaturesEnterprise),
+  oss: new Set<CommercialFeature>(commercialFeaturesEnterprise),
+  starter: new Set<CommercialFeature>(),
+  pro: new Set<CommercialFeature>([]),
+  pro_sso: new Set<CommercialFeature>([]),
+  enterprise: new Set<CommercialFeature>([]),
 };
 
 if (stringToBoolean(process.env.IS_CLOUD)) {
