@@ -1,0 +1,36 @@
+# Production-ish build of GrowthBook from source (this branch), for Coolify.
+#
+# Why this exists (vs the repo's main Dockerfile):
+#   - Uses a stock node base, so no `docker login dhi.io` is required.
+#   - Self-contained single stage: builds front-end + back-end and runs both
+#     via pm2, exposing 3000 (front-end) and 3100 (back-end API) — same shape
+#     as the official image, so one container serves both.
+#
+# Trade-offs (fine for staging):
+#   - Not size-optimized (dev deps + build toolchain remain in the image).
+#   - No Python stats engine (gbstats), so experiment *analysis* won't run.
+#     Everything else (features, auth, org, your logger.info, etc.) works.
+FROM node:24-bookworm-slim
+
+WORKDIR /app
+# tsc + next build are memory-hungry; give node room (needs a builder with RAM).
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+
+# Toolchain for native modules (kerberos, isolated-vm, lz4, sharp) + node-gyp.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential python3 ca-certificates libkrb5-dev git \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
+
+# Copy source and install ALL deps (dev deps are needed to build).
+COPY . .
+RUN pnpm install --frozen-lockfile
+
+# Build shared libs + back-end (tsc) + front-end (next build).
+RUN pnpm build
+
+EXPOSE 3000 3100
+
+# pm2-runtime starts both apps from ecosystem.config.js.
+CMD ["pnpm", "start"]

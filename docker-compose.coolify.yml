@@ -1,0 +1,73 @@
+# GrowthBook on Coolify — build-based (NOT the bind-mount dev compose).
+# The image is built from your source (this branch), so there is no live
+# source tree needed at runtime. Mongo runs alongside on the internal network.
+#
+# In Coolify:
+#   1. Set "Docker Compose Location" to /docker-compose.coolify.yml
+#   2. Add these Environment Variables (Configuration -> Environment Variables):
+#        JWT_SECRET        = <long random string>   (REQUIRED)
+#        ENCRYPTION_KEY    = <long random string>   (REQUIRED)
+#        MONGO_PASSWORD    = <db password>           (recommended)
+#        APP_ORIGIN        = https://growthbook-stage.veefly.in
+#        API_HOST          = https://growthbook-stage-api.veefly.in
+#   3. Domains: growthbook-stage.veefly.in -> port 3000,
+#               growthbook-stage-api.veefly.in -> port 3100  (already set)
+services:
+  growthbook:
+    build:
+      context: .
+      dockerfile: Dockerfile.coolify
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PM2_AUTORESTART=true # restart a crashed app process
+      - BACKEND_PORT=3100 # pin back-end to 3100 (takes precedence over PORT)
+      - PORT=3000 # front-end (next start)
+      - MONGODB_URI=mongodb://root:${MONGO_PASSWORD:-password}@mongo:27017/growthbook?authSource=admin
+      # Public URLs the BROWSER uses — must be the real domains, not localhost.
+      - APP_ORIGIN=${APP_ORIGIN:-https://growthbook-stage.veefly.in}
+      - API_HOST=${API_HOST:-https://growthbook-stage-api.veefly.in}
+      # Secrets — REQUIRED once APP_ORIGIN is not localhost, or the back-end
+      # refuses to start. Set both in Coolify's Environment Variables.
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in Coolify env}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?set ENCRYPTION_KEY in Coolify env}
+    expose:
+      - "3000" # front-end  (Coolify/Traefik routes the FE domain here)
+      - "3100" # back-end API (Coolify/Traefik routes the API domain here)
+    volumes:
+      - gb_uploads:/app/packages/back-end/uploads
+
+  mongo:
+    image: mongo:latest
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-password}
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "-u",
+          "root",
+          "-p",
+          "${MONGO_PASSWORD:-password}",
+          "--authenticationDatabase",
+          "admin",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  mongodata:
+  gb_uploads:
