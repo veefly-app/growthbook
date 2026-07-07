@@ -1,0 +1,93 @@
+# Dev-mode compose: runs YOUR local source with hot reload, and brings up its
+# own MongoDB wired exactly like the original docker-compose.yml (same creds and
+# MONGODB_URI). Node 24 lives inside the container, so this also sidesteps host
+# Node issues.
+# Usage:  docker compose -f docker-compose.dev.yml up
+# First boot is slow (installs deps in-container). After that, edits to
+# packages/*/src hot-reload and back-end logs (e.g. logger.info) show here.
+#
+# Before first run, clear any host node_modules so macOS-built native
+# binaries don't leak through the bind mount:
+#   rm -rf node_modules packages/*/node_modules
+services:
+  mongo:
+    image: mongo:latest
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongodata:/data/db
+    # Report healthy only once Mongo accepts authenticated connections, so the
+    # app waits for it instead of failing its first connection attempt.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "-u",
+          "root",
+          "-p",
+          "password",
+          "--authenticationDatabase",
+          "admin",
+          "--quiet",
+          "--eval",
+          "db.adminCommand('ping')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  growthbook:
+    image: node:24-bookworm
+    working_dir: /app
+    depends_on:
+      mongo:
+        condition: service_healthy # wait until Mongo is ready before connecting
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://root:password@mongo:27017/growthbook?authSource=admin
+      - APP_ORIGIN=http://localhost:3000
+      - API_HOST=http://localhost:3100
+      # File events don't cross the macOS->Linux bind mount reliably, so make
+      # every watcher poll. Without this, nodemon won't restart after swc
+      # rebuilds and swc won't see your src edits (no hot reload).
+      - CHOKIDAR_USEPOLLING=true
+      - CHOKIDAR_INTERVAL=300
+      - WATCHPACK_POLLING=true
+    ports:
+      - "3000:3000" # front-end
+      - "3100:3100" # back-end API
+    volumes:
+      - .:/app # your source, live-mounted for hot reload
+      - gb_root_modules:/app/node_modules # container-built deps (don't use host's)
+      - gb_uploads:/app/packages/back-end/uploads # persist uploads (parity with original)
+    command:
+      - bash
+      - -lc
+      - |
+        set -e
+        corepack enable
+        corepack prepare pnpm@10.33.4 --activate
+        pnpm install
+        pnpm build:deps
+        # Build back-end ONCE so dist/server.js exists before nodemon starts.
+        # The package `dev` script does `rimraf dist` then races swc vs nodemon;
+        # in a container nodemon wins, crashes, and never recovers. Prebuilding
+        # here (and not calling the racy `dev` script) avoids that.
+        pnpm --filter back-end exec swc src --out-dir dist
+        # Front-end + shared + stats-ts watchers in the background.
+        pnpm --filter front-end --filter shared --filter stats-ts -r --parallel run dev &
+        # Back-end: recompile on change + restart. -L makes nodemon poll, since
+        # inotify events don't cross the macOS bind mount. No rimraf, so the
+        # prebuilt dist stays put and the server boots on the first try.
+        cd packages/back-end
+        pnpm exec concurrently \
+          "swc src -w --out-dir dist" \
+          "nodemon -L --watch dist --watch ../shared/dist -e js --exec 'node --enable-source-maps --no-node-snapshot' ./dist/server.js"
+
+volumes:
+  mongodata:
+  gb_root_modules:
+  gb_uploads:
