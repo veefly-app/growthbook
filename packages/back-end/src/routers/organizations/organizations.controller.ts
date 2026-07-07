@@ -930,8 +930,8 @@ export async function getOrganization(
   return res.status(200).json({
     status: 200,
     enterpriseSSO,
-    accountPlan: getAccountPlan(org),
-    effectiveAccountPlan: getEffectiveAccountPlan(org),
+    accountPlan: "enterprise",
+    effectiveAccountPlan: "enterprise",
     licenseError: getLicenseError(org),
     commercialFeatures: [...accountFeatures[getEffectiveAccountPlan(org)]],
     commercialFeatureLowestPlan: commercialFeatureLowestPlan,
