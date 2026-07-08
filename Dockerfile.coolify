@@ -13,8 +13,10 @@
 FROM node:24-bookworm-slim
 
 WORKDIR /app
-# tsc + next build are memory-hungry; give node room (needs a builder with RAM).
-ENV NODE_OPTIONS="--max-old-space-size=8192"
+# tsc + next build are memory-hungry. Cap the heap so ONE build step fits the
+# builder's RAM (tune to your server: 4096 suits ~8GB; lower for smaller boxes).
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # Toolchain for native modules (kerberos, isolated-vm, lz4, sharp) + node-gyp.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,8 +29,12 @@ RUN corepack enable && corepack prepare pnpm@10.33.4 --activate
 COPY . .
 RUN pnpm install --frozen-lockfile
 
-# Build shared libs + back-end (tsc) + front-end (next build).
-RUN pnpm build
+# Build SEQUENTIALLY. `pnpm build` runs back-end tsc and front-end next build
+# in parallel; on a small builder their two heaps thrash swap and the Coolify
+# deploy times out. One heavy step at a time keeps peak memory in check.
+RUN pnpm build:deps
+RUN pnpm --filter back-end run build
+RUN pnpm --filter front-end run build
 
 EXPOSE 3000 3100
 
