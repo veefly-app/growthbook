@@ -17,6 +17,12 @@ WORKDIR /app
 # builder's RAM (tune to your server: 4096 suits ~8GB; lower for smaller boxes).
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_TELEMETRY_DISABLED=1
+# Skip production source maps in the image build — they're a major memory cost
+# and aren't needed to run the app. (next.config.js honors this flag.)
+ENV NEXT_DISABLE_SOURCEMAPS=true
+# Serialize front-end page-data collection to a single worker so the build
+# uses low, steady memory (slower, but won't OOM). (next.config.js honors this.)
+ENV NEXT_LIMIT_BUILD_WORKERS=true
 
 # Toolchain for native modules (kerberos, isolated-vm, lz4, sharp) + node-gyp.
 RUN apt-get update && apt-get install -y --no-install-recommends \

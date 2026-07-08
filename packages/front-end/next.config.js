@@ -25,6 +25,18 @@ const nextConfig = {
   experimental: {
     turbopackFileSystemCacheForDev: true,
     turbopackFileSystemCacheForBuild: true,
+    // Constrained/CI builds (NEXT_LIMIT_BUILD_WORKERS=true): the "Collecting
+    // page data" phase spawns one worker PER CPU, and each worker loads a full
+    // copy of the app — that parallelism is what OOMs on small machines.
+    // These serialize it to a single worker: slower, but low, steady memory.
+    ...(process.env.NEXT_LIMIT_BUILD_WORKERS === "true"
+      ? {
+          cpus: 1,
+          workerThreads: false,
+          staticGenerationMaxConcurrency: 1,
+          staticGenerationMinPagesPerWorker: 100000,
+        }
+      : {}),
   },
   sassOptions: {
     silenceDeprecations: [
@@ -76,7 +88,10 @@ const nextConfig = {
 
     return config;
   },
-  productionBrowserSourceMaps: true,
+  // Source-map generation is very memory-heavy during the production build.
+  // Keep it on by default, but allow disabling it for constrained/CI builds
+  // (set NEXT_DISABLE_SOURCEMAPS=true) to keep peak memory under control.
+  productionBrowserSourceMaps: process.env.NEXT_DISABLE_SOURCEMAPS !== "true",
 };
 
 module.exports = withBundleAnalyzer(nextConfig);
