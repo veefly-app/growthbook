@@ -20,8 +20,8 @@ import { isNewInstallation } from ".";
 
 const jwtCheck = expressjwt({
   secret: JWT_SECRET,
-  audience: "https://api.growthbook.io",
-  issuer: "https://api.growthbook.io",
+  audience: "",
+  issuer: "",
   algorithms: ["HS256"],
   requestProperty: "user",
 });
@@ -100,8 +100,8 @@ export class LocalAuthConnection implements AuthConnection {
       JWT_SECRET,
       {
         algorithm: "HS256",
-        audience: "https://api.growthbook.io",
-        issuer: "https://api.growthbook.io",
+        audience: "",
+        issuer: "",
         subject: user.id,
         // 30 minutes
         expiresIn: 1800,
