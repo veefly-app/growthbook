@@ -171,7 +171,7 @@ function isForbiddenAirGappedLicenseKey(key?: string): boolean {
     return false;
   }
   return forbiddenAirGappedLicenseKeyEndings.some((ending) =>
-    key.endsWith(ending),
+    (key ?? "").endsWith(ending),
   );
 }
 
@@ -1045,11 +1045,12 @@ export function getEffectiveAccountPlan(org: MinimalOrganization): AccountPlan {
   }
 
   const license = getLicense(org.licenseKey);
-  if (!license?.plan || !accountPlans.has(license?.plan)) {
+  const plan = license?.plan;
+  if (!plan || !accountPlans.has(plan as AccountPlan)) {
     return basicPlan;
   }
 
-  return license.plan;
+  return plan as AccountPlan;
 }
 
 /**
@@ -1080,7 +1081,7 @@ function shouldLimitAccessDueToExpiredLicense(
     (licenseData.isTrial || licenseData.remoteDowngrade) &&
     licenseData.dateExpires
   ) {
-    const expirationDate = new Date(licenseData.dateExpires);
+    const expirationDate = new Date(licenseData.dateExpires ?? 0);
 
     if (expirationDate < new Date()) {
       // The license is expired
