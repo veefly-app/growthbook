@@ -23,7 +23,7 @@ export const GB_SDK_ID =
     : "sdk-UmQ03OkUDAu7Aox";
 
 export const gbContext: Context = {
-  apiHost: "https://cdn.growthbook.io",
+  apiHost: "",
   clientKey: GB_SDK_ID,
   enableDevMode: true,
   trackingCallback: (experiment, result) => {

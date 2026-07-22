@@ -87,6 +87,7 @@ export default function track(
   props: TrackEventProps = {},
   skipGrowthBookLogging = false,
 ): void {
+  return;
   // Only run client-side, not during SSR
   if (typeof window === "undefined") return;
 
